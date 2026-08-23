@@ -1,0 +1,8 @@
+{
+    "author":  {
+                   "name":  "CYC2002tommy"
+               },
+    "description":  "Literature database search: OpenAlex, arXiv, Europe PMC, PubMed.",
+    "name":  "hermes-litsearch",
+    "version":  "1.0.0"
+}

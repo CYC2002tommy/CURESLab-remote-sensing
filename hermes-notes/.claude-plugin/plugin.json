@@ -1,0 +1,8 @@
+{
+    "author":  {
+                   "name":  "CYC2002tommy"
+               },
+    "description":  "Obsidian vault knowledge-base workflows: read/write notes, braindump, compile, health-check.",
+    "name":  "hermes-notes",
+    "version":  "1.0.0"
+}

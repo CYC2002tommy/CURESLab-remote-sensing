@@ -1,0 +1,8 @@
+{
+    "author":  {
+                   "name":  "CYC2002tommy"
+               },
+    "description":  "MCP server/client authoring and registration.",
+    "name":  "hermes-infra",
+    "version":  "1.0.0"
+}

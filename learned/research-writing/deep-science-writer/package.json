@@ -1,0 +1,12 @@
+{
+  "name": "deep-science-writer-skill",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Local script dependencies for the deep-science-writer skill",
+  "dependencies": {
+    "docx": "^9.7.1",
+    "pdf-parse": "^2.4.5",
+    "@antv/infographic": "^0.2.20",
+    "playwright": "^1.62.1"
+  }
+}

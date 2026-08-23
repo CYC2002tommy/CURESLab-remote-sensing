@@ -1,0 +1,8 @@
+{
+    "author":  {
+                   "name":  "CYC2002tommy"
+               },
+    "description":  "MATLAB Agentic Toolkit: create live scripts, debug, optimize, review, test, read docs, manage products.",
+    "name":  "hermes-matlab",
+    "version":  "1.0.0"
+}

@@ -1,0 +1,8 @@
+{
+    "author":  {
+                   "name":  "CYC2002tommy"
+               },
+    "description":  "Academic research pipeline: literature search, full-text review, peer review, APA writing, DOCX output.",
+    "name":  "hermes-research",
+    "version":  "1.0.0"
+}

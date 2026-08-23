@@ -1,0 +1,8 @@
+{
+    "author":  {
+                   "name":  "CYC2002tommy"
+               },
+    "description":  "NPP / LCA / AHP / CBAM domain work: remote sensing, geospatial modeling, air-quality HPC, plotting.",
+    "name":  "hermes-domain",
+    "version":  "1.0.0"
+}

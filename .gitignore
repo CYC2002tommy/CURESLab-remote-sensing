@@ -1,0 +1,46 @@
+# Build artefacts and environments — never belong in a skills repo
+.venv/
+venv/
+env/
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.dll
+*.exe
+*.so
+*.dylib
+*.map
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Local state
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+.env
+.env.*
+*.key
+*.pem
+credentials.json
+.cdsapirc
+
+# Large binaries
+*.zip
+*.tar.gz
+*.7z
+*.pdf
+*.docx
+*.pptx
+*.xlsx
+*.tif
+*.tiff
+*.nc
+*.hdf
+*.mat

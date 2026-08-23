@@ -1,0 +1,9 @@
+# Copyright 2026 The MathWorks, Inc.
+description: >
+  Create, debug, test, review, and manage MATLAB code and installations. Every toolkit user needs these.
+keywords:
+  - matlab
+  - debugging
+  - testing
+  - code-review
+  - live-scripts
