@@ -1,4 +1,4 @@
-# Claude Code skills — research & geospatial workflows
+# CURESLab — Claude Code skills for remote sensing & research workflows
 
 A working set of [Claude Code](https://claude.com/claude-code) skills built around
 computational environmental research: remote sensing and NPP modelling, life-cycle

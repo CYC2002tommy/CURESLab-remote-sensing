@@ -394,6 +394,58 @@ on zero instead.
 Both produce completely plausible-looking maps. The second one turned a missing
 reanalysis field into a 70 W m-2 solar radiation surface that nobody questioned.
 
+### 6f. Export resolution — two sets, not one
+
+**CURESLab standard: 1000 DPI for anything that leaves the lab.**
+
+```matlab
+exportgraphics(fig, out_jpg, 'Resolution', 1000, 'BackgroundColor', 'w');
+```
+
+Measured on a 1600 x 800 px figure: 300 dpi gives 3226 x 1782 px (4.5 MB),
+1000 dpi gives 10636 x 5929 px (25 MB), and the export takes about 2 s either way.
+
+But do **not** embed 1000 dpi images in the manuscript. Eighteen of them make a
+`.docx` of several hundred MB, which most submission systems will refuse. Journals
+expect the opposite anyway: a manuscript with placed figures for review, plus
+separate high-resolution files for production.
+
+Keep two sets:
+
+| Directory | Resolution | Purpose |
+|---|---|---|
+| `plots/` | 1000 dpi | production / submission as separate figure files |
+| `plots_embed_300dpi/` | width 2000 px (~300 dpi at 6.5 in) | embedded in the manuscript |
+
+Generate the embed set by downsampling the 1000 dpi originals, never by re-running
+the plotting code at a lower DPI — that way the two sets cannot diverge in content.
+
+```python
+im = Image.open(src)
+if im.width > 2000:
+    im = im.resize((2000, round(im.height * 2000 / im.width)), Image.LANCZOS)
+im.convert('RGB').save(dst, quality=94, optimize=True)
+```
+
+For vector output (some journals require it) the plotting code needs no change:
+
+```matlab
+exportgraphics(fig, out_pdf, 'ContentType', 'vector');
+```
+
+### 6g. Fix the random seed before you publish a number
+
+Monte Carlo results drift by 1-2 per cent between runs. Without a fixed seed, no
+reviewer and no future lab member can reproduce the numbers in your manuscript.
+
+```matlab
+rng(20260824, 'twister');     % any fixed value; record it in the methods
+```
+
+Verify it: run the analysis twice and assert the outputs are identical. If they are
+not, something else in the pipeline is nondeterministic (`parfor` reduction order,
+`rng('shuffle')` buried in a helper) and must be found before the numbers are trusted.
+
 ### 6f. Trim empty ocean from the display
 
 If the boundary polygon includes territorial waters, the axes stretch over blank sea.
