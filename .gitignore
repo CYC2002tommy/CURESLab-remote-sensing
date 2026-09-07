@@ -48,3 +48,8 @@ credentials.json
 # Copyrighted book distillations — personal study only, never published
 brock-microbiology/
 water-supply-course/
+
+# Private project records — these cite specific errors in the user's own
+# research (project names, constants, manuscript sessions). Local only.
+stale-derivative-audit/
+harness-evolution-audit/
