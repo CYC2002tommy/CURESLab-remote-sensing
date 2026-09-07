@@ -1,11 +1,11 @@
 ---
 name: windows-scripting-discipline
-description: Rules for writing and running scripts on this Windows machine without silently corrupting files. Use whenever writing a Python or shell script that edits existing files, doing regex find-and-replace across a codebase, passing paths or patterns through a shell heredoc, or downloading a file that will be trusted downstream. Prevents four failure modes that have each occurred more than once here.
+description: Rules for writing and running scripts on this Windows machine without silently corrupting files. Use whenever writing a Python or shell script that edits existing files, doing regex find-and-replace across a codebase, passing paths or patterns through a shell heredoc, running a long or background command whose output you plan to filter, or downloading a file that will be trusted downstream. Prevents five failure modes that have each occurred more than once here.
 ---
 
 # Windows scripting discipline
 
-Four failure modes, each observed **more than once** in real work on this machine. Each is silent — the script reports success, the damage shows up later.
+Five failure modes, each observed **more than once** in real work on this machine. Each is silent — the script reports success, the damage shows up later.
 
 ## 1. Never let a backslash pass through a shell heredoc
 
@@ -74,6 +74,30 @@ t = pattern.sub(lambda m: replacement, t)
 
 `str.replace()` is safer still when no regex is needed. Reach for it first.
 
+## 5. Filtering a command's output can hide the line that explains the result
+
+**What happened.** A vault reindex was run as `... cli index 2>&1 | grep -E "scanned|unchanged|added|modified|deleted|chunks_written|elapsed"` to keep the summary table tidy. The command's actual output was a single line — `Aborted: Refusing to delete 178 of 541 notes (33%). Re-run with --force if this is intentional.` — which contains none of those keywords and was discarded in full. The run looked like it produced nothing notable. In fact it had refused to prune, and the index silently kept both the old and the new copies of 178 renamed notes: 26,788 chunks where there should have been 16,986, with two competing tag namespaces. It was found only by separately querying `stats` later.
+
+The same shape cost two more runs the same day: `2>&1 | grep -viE "Inference|tokenize"` on a **backgrounded** command buffers, so the output file stayed at 0 bytes and there was no way to tell a slow run from a crashed one. Both had in fact crashed, on failure mode 5b below.
+
+**Rule — never filter the only copy.** Filter for display, but keep the raw stream:
+
+```bash
+cmd 2>&1 | tee "$SCRATCH/run.log" | grep -E "pattern"
+# then, always:
+tail -5 "$SCRATCH/run.log"        # what the filter threw away
+```
+
+For a backgrounded command, do not put a filter in the pipeline at all — write the raw log and read it afterwards. A pipeline that shows nothing is indistinguishable from a command that did nothing.
+
+**Corollary — a filter is a claim about what the output can contain.** Grepping for the keys of a success table asserts the command will emit that table. When it emits a refusal instead, you have filtered out the entire answer. If a run's result surprises you, **re-run it unfiltered before theorising.**
+
+### 5b. `PYTHONIOENCODING` is not just for your own CJK output
+
+The existing environment note ("before any Python that prints CJK through Bash") is scoped too narrowly and did not fire when it should have. The actual failures were a **third-party CLI** printing a Rich box-drawing glyph — `UnicodeEncodeError: 'cp950' codec can't encode character '▸'` — and a script printing `˝` from a PDF. Neither is CJK, neither was code I wrote.
+
+**Rule.** Set `PYTHONIOENCODING=utf-8` for **any** subprocess that may print non-ASCII: your scripts, third-party CLIs, anything using Rich/Typer/colour output, anything echoing extracted document text. The console here is cp950; assume any glyph outside ASCII will abort the process, not merely garble it. Add `NO_COLOR=1` when a tool's decoration is the only thing that needs Unicode.
+
 ---
 
 ## Assert before you write, report after
@@ -100,5 +124,5 @@ Format checks confirm you received *a* file. Only a content check confirms you r
 
 - **PyMuPDF (`fitz`), `requests`, `yaml`, `markitdown`** live in `C:/Users/User/AppData/Local/hermes/hermes-agent/venv/Scripts/python`. The obsidian-rag venv has neither `fitz` nor `pip`.
 - Scratch scripts belong in the session scratchpad directory, not the repo.
-- `export PYTHONIOENCODING=utf-8` before any Python that prints CJK through Bash.
+- `export PYTHONIOENCODING=utf-8` before **any** subprocess that may print non-ASCII — not only your own CJK output. See failure mode 5b: the console is cp950 and a single Rich glyph aborts the process.
 - Use forward slashes in paths passed through MSYS bash, always quoted.
