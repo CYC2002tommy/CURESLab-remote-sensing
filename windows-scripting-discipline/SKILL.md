@@ -1,13 +1,13 @@
 ---
 name: windows-scripting-discipline
-description: Rules for writing and running scripts on this Windows machine without silently corrupting files. Use whenever writing a Python or shell script that edits existing files, doing regex find-and-replace across a codebase, passing paths or patterns through a shell heredoc, running a long or background command whose output you plan to filter, or downloading a file that will be trusted downstream. Prevents five failure modes that have each occurred more than once here.
+description: Rules for writing and running scripts on this Windows machine without silently corrupting files. Use whenever writing a Python or shell script that edits existing files, doing regex find-and-replace across a codebase, passing paths or patterns through a shell heredoc or a `python -c` string, running a long or background command whose output you plan to filter, writing a script that another script may import, or downloading a file that will be trusted downstream. Prevents six failure modes that have each occurred more than once here.
 ---
 
 # Windows scripting discipline
 
-Five failure modes, each observed **more than once** in real work on this machine. Each is silent — the script reports success, the damage shows up later.
+Six failure modes, each observed **more than once** in real work on this machine. Each is silent — the script reports success, the damage shows up later.
 
-## 1. Never let a backslash pass through a shell heredoc
+## 1. Never let a backslash pass through a shell heredoc — or a `python -c` string
 
 **What happened.** A Python script passed via `bash <<'PYEOF'` contained the regex `[\\/]`. Even with the delimiter quoted, the doubled backslash arrived as a single one, so the character class became `[\/]` — matching only forward slash. Windows paths went unmatched while a macOS path was silently rewritten. The script reported "5 files changed" and every change was the wrong one.
 
@@ -30,6 +30,13 @@ WIN = "C:" + BS + "Users" + BS + "User"
 ```
 
 **Verify the pattern before trusting the run.** Print the match count on a known-good sample string first. A regex that reports zero matches on text you can see with `grep` is a mangling symptom, not a missing target.
+
+**`python -c "…"` is the same trap, and it also eats backticks and `$`.** Both happened on 2026-09-09, minutes apart, in throwaway one-liners that appended to a vault note:
+
+- `` `9923d0f` `` inside the `-c` string was command-substituted by bash before Python ever saw it — `9923d0f: command not found`.
+- A Windows path in the next attempt gave `SyntaxError: (unicode error) 'unicodeescape' codec can't decode bytes` — `\T` and `\N` were parsed as Python escapes.
+
+Neither was in a heredoc, so "avoid heredocs" did not fire. The rule is about the **payload**, not the delivery mechanism: if it contains a backslash, a backtick, or a `$`, it goes in a file — `python -c`, `bash -c`, and `-Command` included. A one-liner feels too small to deserve a file; that is exactly when this bites.
 
 ## 2. Never open a file for text write when you did not intend to reformat it
 
@@ -92,11 +99,42 @@ For a backgrounded command, do not put a filter in the pipeline at all — write
 
 **Corollary — a filter is a claim about what the output can contain.** Grepping for the keys of a success table asserts the command will emit that table. When it emits a refusal instead, you have filtered out the entire answer. If a run's result surprises you, **re-run it unfiltered before theorising.**
 
+**Corollary — a pipeline also destroys the exit code.** `cmd | tail -6` exits with *tail's* status, which is essentially always 0. On 2026-09-09 a loop running six audits as `python "$a.py" 2>&1 | tail -6` would have reported a crashed audit as a clean pass: the traceback's last six lines scroll by looking like output, and `$?` says success. Checking a batch of tools is exactly where this matters, because you are reading for "did anything break" and the pipeline has already answered "no" on your behalf.
+
+```bash
+python "$a.py" > "$SCRATCH/$a.log" 2>&1 && echo "exit 0" || echo "FAILED"
+tail -6 "$SCRATCH/$a.log"
+```
+
+In PowerShell the same trap wears `$LASTEXITCODE`: it reflects the last *native* command, so pipe into `Out-Null` or capture first, then test. (Robocopy is the reverse gotcha — its exit codes 0–7 are all success, so `&&` treats a normal copy as a failure.)
+
 ### 5b. `PYTHONIOENCODING` is not just for your own CJK output
 
 The existing environment note ("before any Python that prints CJK through Bash") is scoped too narrowly and did not fire when it should have. The actual failures were a **third-party CLI** printing a Rich box-drawing glyph — `UnicodeEncodeError: 'cp950' codec can't encode character '▸'` — and a script printing `˝` from a PDF. Neither is CJK, neither was code I wrote.
 
 **Rule.** Set `PYTHONIOENCODING=utf-8` for **any** subprocess that may print non-ASCII: your scripts, third-party CLIs, anything using Rich/Typer/colour output, anything echoing extracted document text. The console here is cp950; assume any glyph outside ASCII will abort the process, not merely garble it. Add `NO_COLOR=1` when a tool's decoration is the only thing that needs Unicode.
+
+## 6. Re-wrapping `sys.stdout` breaks every script that imports yours
+
+**What happened.** The standard opening line for a CJK-printing script here was
+
+```python
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+```
+
+This works when the script is run directly and fails the moment anything imports it. The new wrapper takes ownership of `sys.stdout.buffer`; when the **caller** had already wrapped stdout the same way, the old wrapper is garbage-collected and closes the buffer underneath it. Every subsequent `print` raises `ValueError: I/O operation on closed file` — including prints in code that has nothing to do with the import.
+
+It cost a debugging detour on 2026-09-08 (`inline_math_audit.py`) and again on 2026-09-09, when an import check across four audit tools died on the first `print` after the imports. Same cause, different files, two days apart.
+
+**Rule.** Reconfigure the existing object; never replace it.
+
+```python
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')   # Python 3.7+
+```
+
+`reconfigure` mutates the stream in place, so it is idempotent and safe at any import depth. There is no case on this machine where the `TextIOWrapper` form is preferable.
+
+**Why this generalises.** Any module-level statement that *replaces* a process-global — `sys.stdout`, `sys.path`, `os.environ`, `locale`, a matplotlib backend — is a side effect on every future importer. Mutate in place, or guard it behind `if __name__ == '__main__':`.
 
 ---
 
