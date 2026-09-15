@@ -90,6 +90,36 @@ or renaming a note re-embeds nothing at all.
    writing the note — do not fill the gap from general knowledge and imply it
    came from their vault.
 
+## Trust globs match the vault-relative path
+
+`trusted_globs`, `untrusted_globs` and `quarantine_globs` are matched with
+`fnmatch` against the path **relative to the vault root**, e.g.
+`Hermes/01_Cognitive_Framework.md`. A bare filename pattern such as `01_*.md`
+matches nothing in a subfolder, and fails silently: the note just stays
+trusted by "default" while its score is under the threshold, and gets
+quarantined the day it crosses it. Anchor every entry (`Hermes/01_*.md`,
+`**/Project_Activity_Log.md`) and confirm it with `doctor --trust`. The reason
+column must say `glob:…`.
+
+A trust change on a note whose file did not change needs
+`index --force --paths <that note>`. Incremental indexing skips unchanged
+fingerprints, and `--paths` disables pruning, so this is safe.
+
+## Maintenance can be delegated
+
+If a helper agent is set up for this (for example an Antigravity CLI custom
+agent named `rag-admin`), routine maintenance can go to it instead of being
+run inline: `index` → `embed`, `doctor --trust`, per-channel retrieval
+comparisons, `eval run`. What building that taught:
+
+- Put the task in a file and pass the file. Inline task text on a Windows
+  shell can be garbled.
+- Treat its report as a second opinion. Check the numbers with `vault_stats`
+  before quoting them.
+- It proposes; it does not edit the TOML or the code. Apply changes yourself.
+- Two writers must not index at once. Do not call `index_vault` while a
+  delegated `index`/`embed` is running.
+
 ## Beyond the MCP surface
 
 The CLI does everything the server does, plus evaluation:
