@@ -1,11 +1,15 @@
 ---
 name: windows-scripting-discipline
-description: Rules for writing and running scripts on this Windows machine without silently corrupting files. Use whenever writing a Python or shell script that edits existing files, doing regex find-and-replace across a codebase, passing paths or patterns through a shell heredoc or a `python -c` string, running a long or background command whose output you plan to filter, writing a script that another script may import, or downloading a file that will be trusted downstream. Prevents six failure modes that have each occurred more than once here.
+description: Rules for writing and running scripts on this Windows machine without silently corrupting files. Use whenever writing a Python or shell script that edits existing files, doing regex find-and-replace across a codebase, passing paths or patterns through a shell heredoc or a `python -c` string, running a long or background command whose output you plan to filter, writing a script that another script may import, or downloading a file that will be trusted downstream. Prevents seven silent failure modes (1–6 and 5b) seen in real work here, plus a download rule.
 ---
 
 # Windows scripting discipline
 
-Six failure modes, each observed **more than once** in real work on this machine. Each is silent — the script reports success, the damage shows up later.
+Seven failure modes (1–6 and 5b), all from real work on this machine.
+- **Recurrence is recorded for modes 1, 2 and 6 only.** This file notes a second occurrence for those three; for the others it records no repeat.
+- **The download rule near the end is a single incident.** It stays because trusting the wrong file is costly.
+
+Each is silent — the script reports success, the damage shows up later.
 
 ## 1. Never let a backslash pass through a shell heredoc — or a `python -c` string
 
