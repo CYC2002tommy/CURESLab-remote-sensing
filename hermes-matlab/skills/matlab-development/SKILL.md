@@ -9,10 +9,10 @@ description: "Guidelines and workflows for all MATLAB development using the Math
 - Running MATLAB tests or static analysis.
 - User asks to interact with the MATLAB environment.
 
-## Core Principles (USER PREFERENCE)
-**IRON RULE**: ALWAYS use the official MathWorks MATLAB Agentic Toolkit skills for any MATLAB task. Do NOT write or execute MATLAB code blindly using generic terminal commands. The user explicitly requires this toolkit to be used for all MATLAB programming tasks to ensure idiomatic code and prevent hallucinated functions.
+## Core Principles (user preference)
+Use the MathWorks MATLAB Agentic Toolkit skills for MATLAB work rather than writing MATLAB from memory or driving it through generic terminal commands. The user requires this because the toolkit keeps the code idiomatic and catches functions that do not exist.
 
-The following specialized skills are available in the system (from the `matlab-core` group) and MUST be invoked or consulted when appropriate:
+The toolkit skills are in the `hermes-matlab` plugin; consult the one that fits the task:
 - `matlab-create-live-script`
 - `matlab-debug-code`
 - `matlab-review-code`
@@ -31,7 +31,7 @@ MATLAB interactions should occur via the **MATLAB MCP Server**, which provides t
 
 ## Workflow Steps
 1. **Understand Task**: Identify if the user wants to write new code, debug existing code, or run a workflow.
-2. **Consult Sub-Skill**: Call the relevant `matlab-*` skill (e.g., use `Skill(name="matlab-write-test")` if generating unit tests, or `matlab-debug-code` if diagnosing errors).
+2. **Consult Sub-Skill**: Call the relevant `matlab-*` skill (e.g., use `hermes-matlab:matlab-write-test` for unit tests, or `hermes-matlab:matlab-debug-code` when diagnosing errors).
 3. **Leverage MCP**: Use `evaluate_matlab_code` to test small snippets interactively within the shared MATLAB session.
 4. **Analyze Code**: Always run `check_matlab_code` to catch syntax errors, unused variables, and performance warnings before finalizing the code.
 5. **Deliver**: Provide idiomatic MATLAB code, utilizing modern capabilities (e.g., R2021a+ features), and verify toolboxes before using domain-specific functions.

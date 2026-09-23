@@ -41,13 +41,14 @@ Use this skill when the user asks to:
   - Thematic sections or a comparative Table.
   - Inline citations.
   - A formatted References section at the end.
-- Execute the script using `python3 {script.py}` (avoid `execute_code` due to potential missing `python-docx` in the internal sandbox; use standard `Bash` tool).
+- Save the script with `Write` and run it with `Bash`: `python {script.py}`.
 
 ## Pitfalls & Edge Cases
-- **API Rate Limits & SSL Errors**: Semantic Scholar frequently returns `HTTP Error 429: Too Many Requests`. When this happens, aggressively fallback to CrossRef (`api.crossref.org/works`). Additionally, Python on macOS often throws `[SSL: CERTIFICATE_VERIFY_FAILED]` when fetching from these academic APIs. Bypass this by using `requests.get(url, verify=False)` or configuring `urllib` with `ctx = ssl.create_default_context(); ctx.check_hostname = False; ctx.verify_mode = ssl.CERT_NONE`.
-- **Missing `python-docx`**: Do not use `execute_code` for `python-docx` if it throws `ModuleNotFoundError`. Instead, write a python script to `/tmp` via heredoc (`cat << 'EOF' > /tmp/script.py`) and run it with `python3` in the `Bash` tool.
+- **API Rate Limits & SSL Errors**: Semantic Scholar frequently returns `HTTP Error 429: Too Many Requests`. When this happens, aggressively fallback to CrossRef (`api.crossref.org/works`). For SSL errors: if Python raises `CERTIFICATE_VERIFY_FAILED` (seen on macOS Python builds that lack the certificate bundle), use `requests`, which ships its own CA bundle. Do not disable verification by default.
+- **Missing `python-docx`**: install it into the Python you run (`pip install python-docx`), save the script with `Write` and run it with `Bash`.
 - **Background Processes**: Do not use `&` for backgrounding processes in standard foreground `Bash` calls.
-- **SSL Certificate Errors**: When using `urllib` on macOS, bypass `[SSL: CERTIFICATE_VERIFY_FAILED]` by creating an unverified context (`ctx = ssl.create_default_context(); ctx.check_hostname=False; ctx.verify_mode=ssl.CERT_NONE`) and passing it to `urlopen(..., context=ctx)`.\n- **API Rate Limiting (429s)**: Semantic Scholar strictly rate-limits without an API key. Prefer CrossRef and always include a `mailto:your@email.com` in the `User-Agent` header to access the reliable Polite Pool.\n- **Paywalls**: Focus on `content-type: application/pdf` links in CrossRef or `openAccessPdf` in Semantic Scholar to ensure successful downloads.
+- **API Rate Limiting (429s)**: Semantic Scholar strictly rate-limits without an API key. Prefer CrossRef and always include a `mailto:your@email.com` in the `User-Agent` header to access the reliable Polite Pool.
+- **Paywalls**: Focus on `content-type: application/pdf` links in CrossRef or `openAccessPdf` in Semantic Scholar to ensure successful downloads.
 - **Ampersands in Heredoc**: Be careful using `&` in shell heredocs, as it might trigger unexpected backgrounding or syntax errors in certain contexts. Write `and` or quote safely.
 
 ## Reference Files

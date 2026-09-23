@@ -62,5 +62,5 @@ end
 ```
 
 ## 4. Code Generation (Python -> MATLAB): The `\n` Pitfall
-**Pitfall:** When using Python (e.g., via `Edit` or `execute_code`) to write or modify MATLAB code, raw line breaks inside string literals break MATLAB syntax. MATLAB character vectors (single quotes) do not support unescaped physical line breaks, causing `Character vector is not terminated properly`.
+**Pitfall:** When using Python (e.g., via `Edit` or a script) to write or modify MATLAB code, raw line breaks inside string literals break MATLAB syntax. MATLAB character vectors (single quotes) do not support unescaped physical line breaks, causing `Character vector is not terminated properly`.
 **Solution:** When using Python string replacement (`re.sub` or `f-strings`) to generate MATLAB strings (like `fprintf`), meticulously escape newlines as `\\n` so MATLAB receives the literal backslash-n, not a physical newline.

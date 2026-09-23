@@ -125,7 +125,7 @@ web_search(query="arxiv GRPO reinforcement learning 2026")
 
 ## Split, Merge & Search
 
-pymupdf handles these natively — use `execute_code` or inline Python:
+pymupdf handles these natively — use a short Python script saved with `Write` and run with `Bash`:
 
 ```python
 # Split: extract pages 1-5 to a new PDF

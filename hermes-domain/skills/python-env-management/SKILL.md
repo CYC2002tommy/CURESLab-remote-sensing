@@ -12,7 +12,7 @@ A class-level skill for dealing with missing packages, environment boundary issu
 - You encounter `ModuleNotFoundError: No module named 'pip'` or `No module named pip`.
 - You need to install packages into an application's internal/embedded Python environment (e.g., Spyder, Hermes, Blender).
 - The user asks to configure or install packages into a specific local Python environment on Windows, but the executable is not on `PATH`.
-- You are debugging `execute_code` or `Bash` scripts that fail due to missing dependencies.
+- You are debugging Python scripts run through `Bash` that fail due to missing dependencies.
 
 ## Techniques & Pitfalls
 
@@ -40,7 +40,7 @@ When a user asks to install packages for a specific GUI app (like Spyder) but do
 
 ### 3. Cross-Environment Script Execution
 When a script requires dependencies like `pandas` or `plotly` that are not in the current session's venv but exist in another environment:
-- **Do not** write subprocess calls inside `execute_code` that hang waiting for user input.
+- **Do not** write subprocess calls that hang waiting for user input.
 - **Do:** Use the `Bash` tool to invoke the script using the absolute path to the Python executable of the fully-configured environment.
   ```bash
   "C:\path\to\fully\configured\python.exe" "D:\path\to\script.py"

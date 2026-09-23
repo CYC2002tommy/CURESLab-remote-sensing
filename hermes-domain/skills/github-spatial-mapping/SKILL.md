@@ -43,7 +43,7 @@ Do NOT use basic bounding boxes for analytical clipping. The data must be masked
 - **Bounding & Zoom**: Calculate the actual bounding box of the valid data (`min(lat)` to `max(lat)`) and add a 10% margin. Use this to set `xlim` and `ylim` so the target region fills the frame. Do NOT let the region shrink to a tiny dot in the center of the plot.
 - **No Black Outlines**: Do NOT draw the raw Shapefile black border lines (`plot(S.X, S.Y, 'k-')`) over the heatmaps unless explicitly requested. Let the masked heatmap shape define the region.
 - **Background**: Masked values (`NaN`) must be transparent (`AlphaData` in MATLAB) or purely white/transparent, not colored by the bottom of the colormap.
-- **Resolution**: All `exportgraphics` or `plt.savefig` calls MUST be set to `DPI = 1000`.
+- **Resolution**: export at 300 dpi (`exportgraphics(..., 'Resolution', 300)`, `plt.savefig(..., dpi=300)`). Above roughly 400 dpi MATLAB's `exportgraphics` silently drops glyphs from tick labels (measured: `50` printed as `0`, `Berlin` as `Berli`), and the threshold moves with figure size.
 
 ## ⚠️ Pitfalls
 - **MATLAB `ProjectedCRS` Missing Property**: When unpacking the `RasterReference` (`R`) in MATLAB, newer maps might not have `ProjectedCRS`. Always wrap the extraction in `if isprop(R, 'ProjectedCRS')` and provide a fallback directly to the raw `lon_vec`/`lat_vec` limits.

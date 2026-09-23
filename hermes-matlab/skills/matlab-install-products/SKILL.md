@@ -129,10 +129,6 @@ Official documentation:
 - Get mpm: https://www.mathworks.com/help/install/ug/get-mpm-os-command-line.html
 - mpm install: https://www.mathworks.com/help/install/ug/mpminstall.html
 
-## Execution Style
-
-> **Important:** When executing steps, do not narrate or explain what you are about to do. Just run the commands and report results concisely (success, failure, or error). Reserve commentary for confirmations, the plan display, and error reporting only.
-
 ## Canonical Shell (used throughout the Protocol)
 - **Windows**: Windows PowerShell (`powershell.exe`)
 - **Linux**: `bash` / `sh`

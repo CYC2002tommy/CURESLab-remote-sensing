@@ -40,7 +40,7 @@ If the user requests NPP calculations from raw data (e.g., Red/NIR + Climate var
 - **Bounding & Zoom**: Calculate the actual bounding box of the valid data (`min(lat)` to `max(lat)`) and add a 10% margin. Use this to set `xlim` and `ylim` so the target region fills the frame. Do NOT let the region shrink to a tiny dot in the center of the plot.
 - **No Black Outlines**: Do NOT draw the raw Shapefile black border lines (`plot(S.X, S.Y, 'k-')`) over the heatmaps unless explicitly requested. Let the masked heatmap shape define the region.
 - **Background**: Masked values (`NaN`) must be transparent (`AlphaData` in MATLAB) or purely white/transparent, not colored by the bottom of the colormap.
-- **Resolution**: All `exportgraphics` or `plt.savefig` calls MUST be set to `DPI = 1000`.
+- **Resolution**: export at 300 dpi (`exportgraphics(..., 'Resolution', 300)`, `plt.savefig(..., dpi=300)`). Above roughly 400 dpi MATLAB's `exportgraphics` silently drops glyphs from tick labels (measured: `50` printed as `0`, `Berlin` as `Berli`), and the threshold moves with figure size.
 
 ## ⚠️ Pitfalls
 - **Copernicus ERA5 NetCDF Zip Wrapper**: Files downloaded from Copernicus ending in `.nc` are sometimes actually ZIP archives containing `data_stream-moda.nc`. If `netCDF4` throws an `Unknown file format` error, rename the file to `.zip` and unzip it.
@@ -49,9 +49,4 @@ If the user requests NPP calculations from raw data (e.g., Red/NIR + Climate var
 - **MATLAB `ProjectedCRS` Missing Property**: When unpacking the `RasterReference` (`R`) in MATLAB, newer maps might not have `ProjectedCRS`. Always wrap the extraction in `if isprop(R, 'ProjectedCRS')` and provide a fallback directly to the raw `lon_vec`/`lat_vec` limits.
 - **Empty Masks on Coarse Data (Python)**: When overlaying a tiny shapefile (like Paris) onto an extremely coarse grid like ERA5 ($0.25^\circ$), all grid centroids may fall outside the city boundary, resulting in a mask that is completely `False` and obliterates the data. If `np.any(mask)` is false, implement a centroid fallback (assign the nearest grid point to `True`) or broaden the extraction to the bounding box.
 - **Colormap Case Sensitivity (MATLAB)**: MATLAB R2026a and newer strictly require lowercase string names for built-in colormaps (e.g., `colormap(gca, 'blues')`). Passing `'Blues'` will throw an `Unrecognized function or variable` error. When in doubt, manually construct the RGB matrix: `myBlues = [linspace(1,0,256)', linspace(1,0.44,256)', linspace(1,0.74,256)'];`.
-## ⚠️ Pitfalls
-- **Copernicus ERA5 NetCDF Zip Wrapper**: Files downloaded from Copernicus ending in `.nc` are sometimes actually ZIP archives containing `data_stream-moda.nc`. If `netCDF4` throws an `Unknown file format` error, rename the file to `.zip` and unzip it.
-- **Python `geopandas` Deprecation**: `gdf.geometry.unary_union` is deprecated. Use `gdf.geometry.union_all()` instead for dissolving shapes.
-- **Python Execution in MSYS Bash (Windows)**: When running Python scripts locally via the terminal, use absolute paths with forward slashes inside quotes (e.g., `python "C:/path/to/script.py"`) to prevent MSYS bash from stripping backslashes and causing `[Errno 2]`.
-- **MATLAB `ProjectedCRS` Missing Property**: When unpacking the `RasterReference` (`R`) in MATLAB, newer maps might not have `ProjectedCRS`. Always wrap the extraction in `if isprop(R, 'ProjectedCRS')` and provide a fallback directly to the raw `lon_vec`/`lat_vec` limits.
 - **Python `nc.Dataset` time dimensions**: NetCDF files might store time as the 1st or 3rd dimension (`[time, lat, lon]` vs `[lon, lat, time]`). Always dynamically check the index: `time_dim_idx = ds.variables['var'].dimensions.index('valid_time')`.

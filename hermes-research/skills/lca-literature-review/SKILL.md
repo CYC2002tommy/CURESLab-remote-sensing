@@ -41,11 +41,11 @@ Use this skill when the user asks to:
   - Thematic sections or a comparative Table.
   - Inline citations.
   - A formatted References section at the end.
-- Execute the script using `python3 {script.py}` (avoid `execute_code` due to potential missing `python-docx` in the internal sandbox; use standard `Bash` tool).
+- Save the script with `Write` and run it with `Bash`: `python {script.py}`.
 
 ## Pitfalls & Edge Cases
-- **API SSL Errors**: When querying academic APIs (like CrossRef) via Python `urllib` or `requests` on macOS, it may throw `CERTIFICATE_VERIFY_FAILED`. **Workaround**: Use `curl -s -k "URL" | jq '.'` directly via the terminal tool instead of Python.
-- **Missing `python-docx`**: Do not use `execute_code` for `python-docx` if it throws `ModuleNotFoundError`. Instead, write a python script to `/tmp` via heredoc (`cat << 'EOF' > /tmp/script.py`) and run it with `python3` in the `Bash` tool.
+- **API SSL Errors**: if Python raises `CERTIFICATE_VERIFY_FAILED` (seen on macOS Python builds that lack the certificate bundle), use `requests`, which ships its own CA bundle. Do not disable verification by default.
+- **Missing `python-docx`**: install it into the Python you run (`pip install python-docx`), save the script with `Write` and run it with `Bash`.
 - **Background Processes**: Do not use `&` for backgrounding processes in standard foreground `Bash` calls.
 - **Paywalls**: Focus on `content-type: application/pdf` links in CrossRef or `openAccessPdf` in Semantic Scholar to ensure successful downloads.
 - **Ampersands in Heredoc**: Be careful using `&` in shell heredocs, as it might trigger unexpected backgrounding or syntax errors in certain contexts. Write `and` or quote safely.

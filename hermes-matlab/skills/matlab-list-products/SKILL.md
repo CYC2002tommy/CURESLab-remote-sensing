@@ -42,7 +42,7 @@ If the platform cannot be inferred from the path, assume Windows.
 
 ## Protocol
 
-> **Important:** Execute all steps below silently. Do not narrate, describe, or show progress to the user. Output only the final formatted result from Step 6.
+The result shown to the user is the formatted output of Step 6.
 
 ### Step 1 -- Extract release name
 
