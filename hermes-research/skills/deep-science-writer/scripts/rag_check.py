@@ -20,6 +20,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import unicodedata
 import urllib.request
 from pathlib import Path
 
@@ -71,12 +72,14 @@ def main(src, n_questions, k):
     report, broken = [], 0
     with Store(cfg.storage_path() / "index.sqlite3") as store:
         db = store.db
+        root = Path(cfg.vault.path).resolve()
         for path in notes:
-            ap = Path(path).resolve().as_posix()
-            row = db.execute("SELECT note_id, rel_path, trust FROM notes WHERE deleted_at IS NULL "
-                             "AND ? LIKE '%' || rel_path ORDER BY length(rel_path) DESC LIMIT 1", (ap,)).fetchone()
+            # the indexer keys notes by the NFC vault-relative path, case-folded (path_fold)
+            rel = unicodedata.normalize("NFC", Path(path).resolve().relative_to(root).as_posix())
+            row = db.execute("SELECT note_id, rel_path, trust FROM notes WHERE deleted_at IS NULL AND path_fold = ?",
+                             (rel.casefold(),)).fetchone()
             if not row:
-                report.append({"note": ap, "health": "NOT INDEXED"})
+                report.append({"note": rel, "health": "NOT INDEXED"})
                 broken += 1
                 continue
             chunks = db.execute("SELECT chunk_id, raw_text, row FROM chunks WHERE note_id = ? AND deleted_at IS NULL "
@@ -97,6 +100,14 @@ def main(src, n_questions, k):
             report.append({"note": row["rel_path"], "trust": row["trust"], "chunks": len(chunks),
                            "health": "; ".join(problems) or "ok",
                            "sample": [c["raw_text"] for c in mid[::step][:n_questions]]})
+
+    if n_questions == 0:   # health gate only (the run's outputs): no local model, no embedder
+        for r in report:
+            r.pop("sample", None)
+            r["findability"] = "skipped"
+            print(f"{r['health'][:40]:40} {'skipped':24} {r['note']}")
+        print(json.dumps({"notes": len(report), "health_failures": broken, "results": report}, ensure_ascii=False))
+        return 2 if broken else 0
 
     for r in report:   # all local-model calls first, then free the GPU once
         r["questions"] = [q for q in (ask_question(t) for t in r.pop("sample", [])) if q]

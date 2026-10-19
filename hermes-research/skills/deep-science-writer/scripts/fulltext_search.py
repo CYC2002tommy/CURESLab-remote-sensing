@@ -19,6 +19,7 @@ phrases are joined with AND and restricted to papers with full text. Writes to O
 hits.json (checkpointed after every query), fulltext/<id>.txt, contexts.json, summary.md.
 Exits 2 if any search or fetch failed: a failed call is not an empty literature.
 """
+import html
 import json
 import re
 import sys
@@ -76,16 +77,54 @@ def search_epmc(q):
     return d.get("hitCount"), hits
 
 
-def fetch_text(rec, key):
+def jats_markdown(xml, rec):
+    """Europe PMC JATS -> Markdown: abstract + body with ## section titles, no <front> metadata,
+    no reference list, entities decoded. Fills the record's DOI and year from the XML when the
+    search result lacked them (resultType=lite omits them for some PMC papers)."""
+    if not rec.get("doi"):
+        m = re.search(r'<article-id pub-id-type="doi">([^<]+)</article-id>', xml)
+        rec["doi"] = norm_doi(m.group(1)) if m else ""
+    if not rec.get("year"):
+        m = re.search(r"<pub-date[^>]*>.*?<year>(\d{4})</year>", xml, re.S)
+        rec["year"] = m.group(1) if m else rec.get("year")
+
+    def md(fragment):
+        s = re.sub(r"<title[^>]*>(.*?)</title>", lambda m: f"\n\n## {m.group(1)}\n\n", fragment, flags=re.S)
+        s = re.sub(r"</(p|caption|table-wrap)>", "\n\n", s)
+        s = html.unescape(re.sub(r"<[^>]+>", " ", s))
+        s = re.sub(r"[ \t]+", " ", s)
+        return re.sub(r"\n\s*\n\s*", "\n\n", s).strip()
+
+    abstract = re.search(r"<abstract[^>]*>(.*?)</abstract>", xml, re.S)
+    body = re.search(r"<body[^>]*>(.*?)</body>", xml, re.S)
+    parts = ([f"## Abstract\n\n{md(abstract.group(1))}"] if abstract else []) + ([md(body.group(1))] if body else [])
+    return "\n\n".join(parts)
+
+
+def fetch_text(rec, key, stem):
+    """Fetch once, cache the raw API response, convert on every run (so a better converter
+    needs no re-download, and a cache hit still fills the DOI and year from the XML)."""
     if rec.get("pmcid"):
-        xml = http(f"{EPMC}/{rec['pmcid']}/fullTextXML")
-        xml = re.sub(r"</(p|title|sec|caption|table-wrap|ref)>", "\n\n", xml)   # keep paragraphs for RAG chunking
-        return re.sub(r"[ \t]+", " ", re.sub(r"<[^>]+>", " ", xml))
+        raw_path = stem.with_suffix(".jats.xml")
+        if not raw_path.exists():
+            raw_path.write_text(http(f"{EPMC}/{rec['pmcid']}/fullTextXML"), encoding="utf-8")
+            time.sleep(1)
+        return jats_markdown(raw_path.read_text(encoding="utf-8"), rec), "Europe PMC JATS XML"
     ident = f"doi/{rec['doi']}" if rec.get("doi") else f"pii/{rec['pii']}"
-    xml = http(f"https://api.elsevier.com/content/article/{ident}?httpAccept=text/xml",
-               headers={"X-ELS-APIKey": key, "Accept": "text/xml"})
-    return elsevier_markdown(xml) or http(f"https://api.elsevier.com/content/article/{ident}?httpAccept=text/plain",
-                                          headers={"X-ELS-APIKey": key, "Accept": "text/plain"})
+    raw_path = stem.with_suffix(".els.xml")
+    if not raw_path.exists():
+        raw_path.write_text(http(f"https://api.elsevier.com/content/article/{ident}?httpAccept=text/xml",
+                                 headers={"X-ELS-APIKey": key, "Accept": "text/xml"}), encoding="utf-8")
+        time.sleep(1)
+    text = elsevier_markdown(raw_path.read_text(encoding="utf-8"))
+    if text:
+        return text, "Elsevier Article Retrieval API (XML)"
+    plain_path = stem.with_suffix(".els.plain")
+    if not plain_path.exists():
+        plain_path.write_text(http(f"https://api.elsevier.com/content/article/{ident}?httpAccept=text/plain",
+                                   headers={"X-ELS-APIKey": key, "Accept": "text/plain"}), encoding="utf-8")
+        time.sleep(1)
+    return plain_path.read_text(encoding="utf-8"), "Elsevier Article Retrieval API (text/plain)"
 
 
 def elsevier_markdown(xml):
@@ -156,16 +195,17 @@ def main(spec_path, outdir):
     contexts = {}
     for rec in ranked[: spec.get("max_fulltexts", 30)]:
         ident = rec["doi"] or rec.get("pii") or rec.get("pmcid")
-        cache = out / "fulltext" / (re.sub(r"[^a-z0-9]+", "_", ident.lower()) + ".txt")
+        stem = out / "fulltext" / re.sub(r"[^a-z0-9]+", "_", ident.lower())
+        cache = stem.with_suffix(".md")   # the converted text: this file is what rag_ingest.py stores
         try:
-            raw = cache.read_text(encoding="utf-8") if cache.exists() else fetch_text(rec, key)
-            if not cache.exists():
-                cache.write_text(raw, encoding="utf-8")   # line breaks kept: this file is what rag_ingest.py stores
-                time.sleep(1)
+            raw, source = fetch_text(rec, key, stem)
+            if rec["doi"].startswith("10.3390"):   # a PMC paper whose DOI only showed up in its XML
+                continue
+            cache.write_text(raw, encoding="utf-8")
             text = re.sub(r"\s+", " ", raw)
             sents = re.split(r"(?<=[.;])\s+(?=[A-Z(])", text)
             entry = {"title": rec["title"], "doi": rec["doi"], "pmcid": rec.get("pmcid"), "text_path": str(cache),
-                     "source": "Europe PMC JATS XML" if rec.get("pmcid") else "Elsevier Article Retrieval API (XML)",
+                     "source": source,
                      "venue": rec["venue"], "journal": rec["venue"], "year": rec["year"], "authors": rec.get("authors", []),
                      "sources": rec["sources"], "queries": rec["queries"], "chars": len(text),
                      "content_check": "ok" if title_found(rec["title"], text) else "TITLE NOT FOUND IN TEXT",

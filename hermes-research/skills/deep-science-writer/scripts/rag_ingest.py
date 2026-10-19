@@ -16,11 +16,13 @@ retyped. A text is refused when the DOI's title is not found near the start of t
 characters (an abstract, not a full text). A DOI already under raw/papers is skipped.
 
 --index / --index-only: unload the local model (it shares the GPU with the embedder), run
-obsidian-rag `index --paths <folder>` and `embed`, then scripts/rag_check.py (health gate +
-advisory findability). Needs obsidian-rag registered in ~/.claude.json; otherwise the notes are
-written and the indexing step is reported as skipped.
+obsidian-rag's incremental `index` (whole vault, so removed notes are pruned) and `embed`, then
+scripts/rag_check.py: the health gate, plus advisory findability for papers (not for the run's
+outputs). A retry re-checks notes already in the topic folder. Needs obsidian-rag registered in
+~/.claude.json; otherwise the notes are written and the indexing step is reported as skipped.
 
-The last stdout line is JSON. Exit 2 if any entry failed or any note failed the health gate.
+The last stdout line is JSON. Exit 2 if an entry failed to ingest or a note failed the health
+gate; downloads that failed their own check are listed as "refused_upstream" and do not count.
 Full texts stay in the private vault; never commit them to a repo.
 """
 import datetime
@@ -51,16 +53,24 @@ def rag_python():
         return None
 
 
-def existing_dois():
-    """DOI -> note, from the YAML `doi:` line or, for older notes without one, a doi.org link
-    in the first 1,500 characters (the header, before any reference list)."""
+def existing_ids():
+    """DOI or PMCID -> note. A note with a YAML `doi:` key is taken at its word (even when
+    empty). Older notes without the key: a doi.org link in the first 1,500 characters (the
+    header), never a Crossref Funder Registry DOI (10.13039/...), which JATS front matter carries."""
     seen = {}
     for md in PAPERS.rglob("*.md"):
         head = md.read_text(encoding="utf-8", errors="replace")[:1500]
-        m = (re.search(r'^doi:\s*"?([^"\s]+)"?\s*$', head, re.M)
-             or re.search(r"doi\.org/(10\.\d{4,9}/[^\s\"<>)\]]+)", head))
-        if m:
-            seen[norm_doi(m.group(1)).rstrip(".")] = md
+        key = re.search(r'^doi:\s*"?([^"\s]*)"?\s*$', head, re.M)
+        if key:
+            doi = key.group(1)
+        else:
+            links = [d for d in re.findall(r"doi\.org/(10\.\d{4,9}/[^\s\"<>)\]]+)", head) if not d.startswith("10.13039")]
+            doi = links[0] if links else ""
+        if doi:
+            seen[norm_doi(doi).rstrip(".")] = md
+        pmc = re.search(r'^pmcid:\s*"?(PMC\d+)"?\s*$', head, re.M)
+        if pmc:
+            seen[pmc.group(1).upper()] = md
     return seen
 
 
@@ -79,12 +89,18 @@ def yaml_value(v):
     return json.dumps(v, ensure_ascii=False)   # a JSON string is a valid YAML double-quoted scalar
 
 
+class Refused(Exception):
+    """Refused upstream: the download itself failed its check. Reported, not an ingest error."""
+
+
 def write_note(e, folder, cache, seen):
     doi = norm_doi(e.get("doi"))
     if e.get("error") or e.get("content_check", "ok") != "ok":
-        raise RuntimeError(f"failed its download check: {e.get('error') or e['content_check']}")
-    if doi and doi in seen:
-        return None, str(seen[doi])
+        raise Refused(e.get("error") or e["content_check"])
+    pmc = (e.get("pmcid") or "").upper()
+    for ident in (doi, pmc):
+        if ident and ident in seen:
+            return None, str(seen[ident])
     text = Path(e["text_path"]).read_text(encoding="utf-8", errors="replace")
     if len(text) < 3000:
         raise RuntimeError(f"text is {len(text)} characters: an abstract, not a full text")
@@ -120,7 +136,9 @@ def write_note(e, folder, cache, seen):
               f"> Full text retrieved {fm['retrieved']} via {fm['source']}. Source material, not the user's notes.", "",
               text]
     path.write_text("\n".join(lines), encoding="utf-8")
-    seen[doi] = path
+    for ident in (doi, pmc):
+        if ident:
+            seen[ident] = path
     return str(path), None
 
 
@@ -134,15 +152,17 @@ def unload_local_model():
         pass
 
 
-def index_and_check(rel_folder, notes):
-    """index --paths <folder>, embed, then the health gate. Returns (log, failed?)."""
+def index_and_check(notes, questions=2):
+    """Incremental index of the whole vault, embed, then the health gate. Returns (log, failed?).
+    Not `index --paths`: that skips pruning, so a note removed or renamed inside the folder
+    would stay live and searchable. A whole-vault incremental index took 8 s (789 notes)."""
     py = rag_python()
     if not py:
         return {"index": "skipped: obsidian-rag is not registered in ~/.claude.json"}, False
     repo = Path(py).resolve().parents[2]   # <repo>/.venv/Scripts/python.exe; the CLI reads <repo>/obsidian-rag.toml
     unload_local_model()
     log = {}
-    for args in (["index", "--paths", rel_folder], ["embed"]):
+    for args in (["index"], ["embed"]):
         r = subprocess.run([py, "-m", "obsidian_rag.cli", *args], capture_output=True, text=True,
                            encoding="utf-8", errors="replace", cwd=repo)
         log[args[0]] = f"exit {r.returncode}: {(r.stdout + r.stderr)[-600:]}"
@@ -151,7 +171,8 @@ def index_and_check(rel_folder, notes):
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
         json.dump({"written": notes}, f)
         tmp = f.name
-    r = subprocess.run([py, str(CHECK), tmp], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=repo)
+    r = subprocess.run([py, str(CHECK), tmp, "--questions", str(questions)], capture_output=True, text=True,
+                       encoding="utf-8", errors="replace", cwd=repo)
     Path(tmp).unlink(missing_ok=True)
     print(r.stdout[:-1] if r.stdout.endswith("\n") else r.stdout)
     try:
@@ -165,7 +186,7 @@ def main(argv):
     if argv[:1] == ["--index-only"] and len(argv) == 2:
         folder = VAULT / argv[1]
         notes = [str(p) for p in folder.rglob("*.md")]
-        log, bad = index_and_check(argv[1], notes)
+        log, bad = index_and_check(notes, questions=0)   # run outputs: the health gate only
         print(json.dumps({"indexed": notes, "log": log}, ensure_ascii=False))
         return 2 if bad else 0
     args = [a for a in argv if a != "--index"]
@@ -178,19 +199,24 @@ def main(argv):
     folder.mkdir(parents=True, exist_ok=True)
     cache = Path(src).resolve().parent / ".doi_cache"
     cache.mkdir(exist_ok=True)
-    seen = existing_dois()
-    written, skipped, failed = [], [], []
+    seen = existing_ids()
+    written, skipped, refused, failed = [], [], [], []
     for e in entries:
         try:
             path, existing = write_note(e, folder, cache, seen)
             (written.append(path) if path else skipped.append({"doi": norm_doi(e.get("doi")), "note": existing}))
+        except Refused as why:
+            refused.append({"doi": norm_doi(e.get("doi")), "reason": str(why)})
         except (RuntimeError, OSError, KeyError, ValueError) as err:
             failed.append({"doi": norm_doi(e.get("doi")), "text_path": e.get("text_path"), "error": str(err)})
     log, bad = ({}, False)
-    if "--index" in argv and written:
-        log, bad = index_and_check(folder.relative_to(VAULT).as_posix(), written)
-    print(json.dumps({"written": written, "skipped": skipped, "failed": failed, "log": log}, ensure_ascii=False))
-    return 2 if failed or bad else 0
+    # also re-check notes skipped inside this folder, so a retry after an interrupted index/embed completes
+    here = [s["note"] for s in skipped if Path(s["note"]).resolve().parent == folder.resolve()]
+    if "--index" in argv and (written or here):
+        log, bad = index_and_check(written + here)
+    print(json.dumps({"written": written, "skipped": skipped, "refused_upstream": refused, "failed": failed,
+                      "log": log}, ensure_ascii=False))
+    return 2 if failed or bad else 0   # a refused download is reported, not an ingest failure
 
 
 if __name__ == "__main__":
