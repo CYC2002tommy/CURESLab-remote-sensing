@@ -33,6 +33,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # the Windows console is cp950 here
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from export_reference_table import CSL, authors_of, fetch, first, norm_doi, plain, similar  # noqa: E402
 
@@ -69,8 +70,8 @@ def title_in_text(title, text):
     return not words or sum(w in head for w in words) / len(words) >= 0.6
 
 
-def slug(s, n):
-    words = [w for w in re.findall(r"[A-Za-z0-9]+", s) if len(w) > 2][:n]
+def slug(s, n, min_len=3):
+    words = [w for w in re.findall(r"[A-Za-z0-9]+", s) if len(w) >= min_len][:n]
     return "_".join(w.capitalize() for w in words) or "Untitled"
 
 
@@ -93,21 +94,24 @@ def write_note(e, folder, cache, seen):
         raise RuntimeError(f"expected title does not match the DOI's title '{title[:80]}'")
     if not title_in_text(title, text):
         raise RuntimeError(f"the DOI's title '{title[:80]}' is not near the start of the text: wrong file?")
-    authors = [a.strip() for a in authors_of(meta).split(";") if a.strip()] or e.get("authors", [])
+    authors = [a.strip() for a in authors_of(meta).split(";") if a.strip()] or e.get("authors") or []
     year = (meta.get("issued", {}).get("date-parts") or [[None]])[0][0] or e.get("year")
-    family = (meta.get("author") or [{}])[0].get("family") or (authors[0].split(",")[0] if authors else "Anon")
-    name = f"{slug(family, 1)}_{year or 'nd'}_{slug(title, 5)}.md"
+    first_author = authors[0] if authors else "Anon"
+    # "Family, Given" (from the DOI) or Europe PMC's "Family Initials" ("Ma Q")
+    family = (meta.get("author") or [{}])[0].get("family") or \
+        (first_author.split(",")[0] if "," in first_author else first_author.split()[0])
+    name = f"{slug(family, 1, min_len=1)}_{year or 'nd'}_{slug(title, 5)}.md"   # Li, Xu, Wu are real surnames
     path = folder / name
     if path.exists():
         path = folder / name.replace(".md", f"_{re.sub(r'[^a-z0-9]', '', doi)[-6:]}.md")
     fm = {"title": title, "type": "raw", "authors": authors, "year": year,
-          "journal": plain(first(meta.get("container-title"))) or e.get("journal", ""),
+          "journal": plain(first(meta.get("container-title"))) or e.get("journal") or e.get("venue") or "",
           "doi": doi, "pmcid": e.get("pmcid") or "", "source": e.get("source", ""),
           "retrieved": datetime.date.today().isoformat(), "tags": ["paper", *e.get("tags", [])]}
     lines = ["---"]
     for k, v in fm.items():
         if isinstance(v, list):
-            lines.append(f"{k}:")
+            lines.append(f"{k}:" if v else f"{k}: []")
             lines += [f"  - {yaml_value(x)}" for x in v]
         else:
             lines.append(f"{k}: {yaml_value(v) if isinstance(v, str) else (v if v is not None else '')}")
@@ -135,18 +139,19 @@ def index_and_check(rel_folder, notes):
     py = rag_python()
     if not py:
         return {"index": "skipped: obsidian-rag is not registered in ~/.claude.json"}, False
+    repo = Path(py).resolve().parents[2]   # <repo>/.venv/Scripts/python.exe; the CLI reads <repo>/obsidian-rag.toml
     unload_local_model()
     log = {}
     for args in (["index", "--paths", rel_folder], ["embed"]):
         r = subprocess.run([py, "-m", "obsidian_rag.cli", *args], capture_output=True, text=True,
-                           encoding="utf-8", errors="replace")
+                           encoding="utf-8", errors="replace", cwd=repo)
         log[args[0]] = f"exit {r.returncode}: {(r.stdout + r.stderr)[-600:]}"
         if r.returncode:
             return log, True
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False, encoding="utf-8") as f:
         json.dump({"written": notes}, f)
         tmp = f.name
-    r = subprocess.run([py, str(CHECK), tmp], capture_output=True, text=True, encoding="utf-8", errors="replace")
+    r = subprocess.run([py, str(CHECK), tmp], capture_output=True, text=True, encoding="utf-8", errors="replace", cwd=repo)
     Path(tmp).unlink(missing_ok=True)
     print(r.stdout[:-1] if r.stdout.endswith("\n") else r.stdout)
     try:

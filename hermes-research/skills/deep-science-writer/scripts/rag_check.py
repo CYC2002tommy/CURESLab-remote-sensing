@@ -23,6 +23,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")   # the Windows console is cp950 here
 ASK_LOCAL = Path("C:/Users/User/AppData/Local/agy-helpers/ask_local.py")
 LOCAL_MODEL = "gemma4:12b"
 

@@ -250,7 +250,7 @@ The method behind the three strategies is adapted from three workflows Consensus
 
    In every gate the reference table check is: each row's DOI resolves to its title, the Check column is empty or explained, each summary says only what its basis supports, and the table lists exactly the papers the deliverable cites.
 4. **Loop:** any `SUBMISSION BLOCKER` or `CRITICAL` is fixed under the No-Lazy-Editing rule (Phase 5 steps 3-4: a new search and new evidence, not deletion or rewording), the affected outputs are regenerated (the reference table too), and Remi checks again. Done when no blocking concern is left.
-5. **Deliver** Remi's final report beside the deliverable. List the remaining `MAJOR` and `PRESENTATION` items in the delivery note, so the user sees what was not fixed.
+5. **Deliver** the final review beside the deliverable: Remi's report merged with manuscript-auditor's findings where that review ran (Phase 4.5 step 6), each concern tagged with who raised it. List the remaining `MAJOR` and `PRESENTATION` items in the delivery note, so the user sees what was not fixed.
 
 ### Phase 9: Offer a 懶人包 — every run, last message
 After delivery and after Phase 7 steps 1-2, the run's very last message asks one question, in the user's language and lettered like the grilling rounds:

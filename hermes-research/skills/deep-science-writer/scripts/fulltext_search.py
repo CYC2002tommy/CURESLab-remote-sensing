@@ -70,7 +70,9 @@ def search_epmc(q):
     query = " AND ".join(f'"{p}"' for p in phrases) + " AND HAS_FT:Y AND OPEN_ACCESS:Y"
     d = json.loads(http(f"{EPMC}/search?query={urllib.parse.quote(query)}&format=json&pageSize=100&resultType=lite"))
     hits = [{"doi": norm_doi(r.get("doi")), "pmcid": r.get("pmcid"), "title": r.get("title"),
-             "venue": r.get("journalTitle"), "year": r.get("pubYear")} for r in d.get("resultList", {}).get("result", [])]
+             "venue": r.get("journalTitle"), "year": r.get("pubYear"),
+             "authors": [a.strip() for a in (r.get("authorString") or "").rstrip(".").split(",") if a.strip()]}
+            for r in d.get("resultList", {}).get("result", [])]   # authors kept: some PMC papers have no DOI
     return d.get("hitCount"), hits
 
 
@@ -164,7 +166,7 @@ def main(spec_path, outdir):
             sents = re.split(r"(?<=[.;])\s+(?=[A-Z(])", text)
             entry = {"title": rec["title"], "doi": rec["doi"], "pmcid": rec.get("pmcid"), "text_path": str(cache),
                      "source": "Europe PMC JATS XML" if rec.get("pmcid") else "Elsevier Article Retrieval API (XML)",
-                     "venue": rec["venue"], "year": rec["year"],
+                     "venue": rec["venue"], "journal": rec["venue"], "year": rec["year"], "authors": rec.get("authors", []),
                      "sources": rec["sources"], "queries": rec["queries"], "chars": len(text),
                      "content_check": "ok" if title_found(rec["title"], text) else "TITLE NOT FOUND IN TEXT",
                      "flags": {k: bool(r.search(text)) for k, r in flags.items()},
