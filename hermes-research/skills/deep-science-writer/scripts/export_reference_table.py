@@ -79,23 +79,36 @@ def first(v):
     return v[0] if isinstance(v, list) and v else (v or "")
 
 
-def fix_article_number(apa, csl, check):
+def fix_article_number(apa, csl, p, check):
     """citeproc's apa style drops Crossref's `article-number` and prints an eLocator
-    such as 084010 as page 84010. APA 7th wants `, Article <number>` after vol(issue)."""
-    num, page = csl.get("article-number"), str(csl.get("page") or "")
-    if not num and page and not re.search(r"[-–]", page):
+    such as 084010 as page 84010. APA 7th wants `, Article <number>` after vol(issue).
+    papers.json may settle a case by hand: "article_number": "107737", or
+    "single_page": true for a genuine one-page paper."""
+    num, page = p.get("article_number") or csl.get("article-number"), str(csl.get("page") or "")
+    if not num and page and not re.search(r"[-–]", page) and not p.get("single_page"):
         if page.startswith("0") or re.search(r"[A-Za-z]", page):
             num = page                      # a page cannot start with 0 or hold a letter
         else:
-            check.append(f"single page '{page}': confirm it is not an article number")
+            check.append(f"single page '{page}': set article_number or single_page in papers.json")
     if not num:
         return apa
     vol, iss = str(csl.get("volume") or ""), str(csl.get("issue") or "")
     vi = f"{vol}({iss})" if iss else vol
-    new, n = re.subn(re.escape(vi) + r"(, [0-9A-Za-z.]+)?\.", f"{vi}, Article {num}.", apa, count=1)
+    n = 0
+    if vol:   # anchored on ", vol(issue)" right before the DOI link, so a title or initial is never hit
+        apa, n = re.subn(r", " + re.escape(vi) + r"(, [^.,]+)?\.(?=\s+https?://|\s*$)",
+                         f", {vi}, Article {num}.", apa, count=1)
     if not n:
         check.append(f"article number {num} not placed: check the APA string")
-    return new if n else apa
+    return apa
+
+
+def plain(s):
+    """Crossref titles carry inline markup (CO<sub>2</sub>, <i>Genus</i>)."""
+    return html.unescape(re.sub(r"<[^>]+>", "", s or ""))
+
+
+ILLEGAL = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f]")   # openpyxl refuses these (e.g. a PDF form feed)
 
 
 def similar(a, b):
@@ -120,9 +133,9 @@ def main(src, out):
             seen.add(doi)
             try:
                 csl = json.loads(fetch(doi, CSL, cache))
-                apa = re.sub(r"\s+", " ", html.unescape(fetch(doi, APA, cache))).strip()
-                apa = fix_article_number(apa, csl, check)
-                resolved = html.unescape(first(csl.get("title")))
+                apa = re.sub(r"\s+", " ", plain(fetch(doi, APA, cache))).strip()
+                apa = fix_article_number(apa, csl, p, check)
+                resolved = plain(first(csl.get("title")))
                 if p.get("title") and similar(p["title"], resolved) < 0.6:
                     check.append(f"TITLE MISMATCH: DOI resolves to '{resolved[:90]}'")
                 title, authors = resolved, authors_of(csl)
@@ -141,7 +154,7 @@ def main(src, out):
     head = ["Title", "Authors", "DOI", "APA 7th citation", "Summary", "Summary basis", "Check"]
     ws.append(head)
     for r in rows:
-        ws.append(r)
+        ws.append([ILLEGAL.sub(" ", v) if isinstance(v, str) else v for v in r])
     for c in ws[1]:
         c.font = Font(bold=True)
         c.fill = PatternFill("solid", fgColor="DDE5F0")
