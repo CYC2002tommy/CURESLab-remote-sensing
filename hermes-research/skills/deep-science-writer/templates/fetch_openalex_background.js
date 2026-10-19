@@ -82,7 +82,8 @@ function checkpoint(records, log) {
     fs.writeFileSync(path.join(OUT, 'records.json'), JSON.stringify(recs, null, 1));
     fs.writeFileSync(path.join(OUT, 'search_log.json'), JSON.stringify(log, null, 1));
 
-    const rows = log.map(l => `| ${l.subarea} | ${l.q} | ${l.filter || ''} | ${l.status}${l.cached ? ' (cache)' : ''} | ${l.returned} | ${l.available ?? ''} | ${l.mdpi_excluded} | ${l.error || ''} |`);
+    const cell = s => String(s ?? '').replace(/\|/g, '/').replace(/\s+/g, ' ');   // `type:article|review` would split a column
+    const rows = log.map(l => `| ${cell(l.subarea)} | ${cell(l.q)} | ${cell(l.filter)} | ${l.status}${l.cached ? ' (cache)' : ''} | ${l.returned} | ${l.available ?? ''} | ${l.mdpi_excluded} | ${cell(l.error)} |`);
     const top = [...recs].sort((a, b) => b.sub_area_hits.length - a.sub_area_hits.length || b.cites_per_year - a.cites_per_year);
     const md = [
         '# OpenAlex harvest summary', '',
@@ -91,7 +92,7 @@ function checkpoint(records, log) {
         `## Research groups (>= ${GROUP_MIN} records)`, '', ...groups.map(([a, n]) => `- ${a}: ${n}`), '',
         '## Records by sub-area hits, then citations per year', '',
         '| Hits | Sub-areas | Cites/yr | Year | First author | Title | DOI |', '|---|---|---|---|---|---|---|',
-        ...top.map(r => `| ${r.sub_area_hits.length} | ${r.sub_area_hits.join(', ')} | ${r.cites_per_year} | ${r.year} | ${r.authors[0] || ''} | ${(r.title || '').replace(/\|/g, '/')} | ${r.doi || r.id} |`),
+        ...top.map(r => `| ${r.sub_area_hits.length} | ${cell(r.sub_area_hits.join(', '))} | ${r.cites_per_year} | ${r.year} | ${cell(r.authors[0])} | ${cell(r.title)} | ${r.doi || r.id} |`),
     ].join('\n');
     fs.writeFileSync(path.join(OUT, 'summary.md'), md);
 }

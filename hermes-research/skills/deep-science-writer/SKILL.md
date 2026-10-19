@@ -28,7 +28,7 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
      | `facets` | an Introduction, a proposal's significance and innovation, "has anyone done X" | §2: five facet searches, verbatim gap quotes, positioning narrative |
      | `syllabus` | course topics to a reading list for students | §3: sections, 1-3 papers each, summaries, discussion questions |
 
-   - **Stop gate**: `map` stops after the synthesis tables or reading list and the vault note; `section` runs through Phase 4.5 (full text, drafting, humanizer, grounding), plus Phase 5 if the text goes into a manuscript; `manuscript` runs every phase. A positioning narrative or any prose the user will paste into a document needs `section` or higher, so it is humanized and grounded.
+   - **Stop gate**: `map` runs the searches and screening (Phase 0.5 step 1, Phase 1) and stops after the abstract-level synthesis tables or reading list and the vault note; `section` runs through Phase 4.5 (full text, drafting, humanizer, grounding), plus Phase 5 if the text goes into a manuscript; `manuscript` runs every phase. A positioning narrative or any prose the user will paste into a document needs `section` or higher, so it is humanized and grounded.
    - **Budget tier**: `quick` (5 searches), `standard` (10, allocation in §1), or `exhaustive` (the Phase 1 five-source sweep).
    - **Source floor**: `quick` and `standard` use at least two sources, one of them AnySearch `academic.citation` on the seed DOIs; `exhaustive` uses all five.
    - **Subagent count**: default 0. Harvest with the background template (`templates/fetch_openalex_background.js`) and MCP calls in the main conversation. A count above 0 must be named here and approved.
@@ -48,7 +48,7 @@ The method behind the three strategies is adapted from three workflows Consensus
    - **Topic Enhancement (對課題有什麼提升)**: Clearly articulate how these findings can be fed back into the user's project to improve their experimental design, strengthen their argument, or correct their research trajectory.
 6. **Synthesis & Synthesis Mastery:** Merge and critically analyze the findings into a formal academic synthesis report, in the main conversation unless the blueprint approved a subagent for it. *(Note: Override the user's general chat preference for concise lists; use standard formal academic prose here.)*
 
-### Phase 1: Strict Multi-Agent Discovery (`scopus-mcp` + `exa-search` + `openalex` + `semantic-scholar` + `anysearch`)
+### Phase 1: Strict Multi-Source Discovery (`scopus-mcp` + `exa-search` + `openalex` + `semantic-scholar` + `anysearch`)
 1. **Journal Quality Filter**: ONLY include Q1 and Q2 papers. If a Q3 paper provides crucial evidence, you MUST explicitly mark it in the text/table with `[Q3]`. STRICTLY EXCLUDE any Q4 papers and ANY papers published by MDPI.
 2. **Source coverage, not subagent count**: coverage is set by the blueprint's budget tier and source floor (Phase 0 step 4). The five sources below are Source 1 (Scopus), Source 2 (Exa Search), Source 3 (OpenAlex), Source 4 (Semantic Scholar) and Source 5 (AnySearch vertical academic search and citation graph). Run them from the main conversation by default; split them across subagents only when the blueprint names the count and the user approved it.
 3. **Exclusion Rules**: Every source, and every subagent if any, MUST strictly adhere to the MDPI/Q4 exclusion rules.
