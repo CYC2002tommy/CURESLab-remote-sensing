@@ -55,10 +55,13 @@ def main():
     parser.add_argument("dois", nargs="+", help="List of DOIs to fetch.")
     parser.add_argument("--out", default="fulltexts_extracted.md", help="Output markdown file.")
     parser.add_argument("--email", default="your.email@example.com", help="Email for Unpaywall API.")
+    parser.add_argument("--dir", default="fulltext", help="Folder that keeps each PDF and its extracted text.")
     args = parser.parse_args()
 
     global EMAIL
     EMAIL = args.email
+    os.makedirs(args.dir, exist_ok=True)
+    manifest = []   # rag_ingest.py reads this file as is
 
     with open(args.out, "w", encoding="utf-8") as out:
         out.write("# Full-Text Extraction Results\n\n")
@@ -72,22 +75,30 @@ def main():
                 continue
                 
             print(f"  -> Found OA URL: {pdf_url}")
-            pdf_path = f"{doi.replace('/', '_')}.pdf"
-            
+            stem = os.path.join(args.dir, doi.replace('/', '_'))
+            pdf_path = stem + ".pdf"
+
             if download_pdf(pdf_url, pdf_path):
                 print(f"  -> Downloaded PDF. Extracting text...")
                 text = extract_text(pdf_path)
                 out.write(f"## {doi}\n")
-                # Write up to 40,000 chars to cover Intro, Methodology, and Results
-                out.write(text[:40000] + "\n\n")
-                os.remove(pdf_path)
+                # The whole text: Discussion and Limitations hold the gap quotes. The PDF is kept
+                # for page-image QA and for checking extracted numbers against the page.
+                out.write(text + "\n\n")
+                with open(stem + ".txt", "w", encoding="utf-8") as t:
+                    t.write(text)
+                manifest.append({"doi": doi, "text_path": stem + ".txt", "pdf_path": pdf_path,
+                                 "source": "Unpaywall open-access PDF via PyMuPDF",
+                                 "content_check": "ok" if not text.startswith("Extraction Error") else text[:200]})
             else:
                 print(f"  -> Failed to download PDF.")
                 out.write(f"## {doi}\nFailed to download PDF from {pdf_url}.\n\n")
                 
             time.sleep(1) # Be polite to the API
 
-    print(f"\n[+] Extraction complete. Saved to {args.out}")
+    with open(os.path.join(args.dir, "manifest.json"), "w", encoding="utf-8") as m:
+        json.dump(manifest, m, ensure_ascii=False, indent=1)
+    print(f"\n[+] Extraction complete. Saved to {args.out}; per-paper files and manifest.json in {args.dir}")
 
 if __name__ == "__main__":
     main()
