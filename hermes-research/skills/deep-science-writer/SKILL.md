@@ -17,9 +17,30 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
 
 ### Phase 0: Mandatory Deep Context Gathering & Research Plan
 1. Incorporate academic rigor, structured literature parsing, and cross-validation techniques into your approach and keep those principles active in context. Reference material for these lives in the local repos `C:/Users/User/workspace/nature-skills/`, `C:/Users/User/workspace/academic-research-skills/`, and `C:/Users/User/workspace/superpowers/` — these are **not** installed skills, so read from them with `Read`/`Grep` rather than trying to invoke them.
-2. **Mandatory Interrogation:** You MUST deeply understand the user's current research topic before doing anything else. If the user's initial prompt is too brief, you MUST actively interrogate them to extract their exact pain points, research hypotheses, and core objectives. Do NOT proceed until you fully grasp the context.
-3. **RECON:** run one broad search on the topic as stated (OpenAlex or Scopus) to learn its vocabulary, themes, method families and high-citation papers. Select nothing yet; this only informs the blueprint.
-4. **Blueprint.** One plan, one approval. It states:
+2. **Mandatory Grilling (user's rule, 2026-10-19):** You MUST interview the user until every decision below is settled, and run nothing past RECON (step 3) before then. The method is the `grilling` skill's (`C:/Users/User/.claude/skills/grilling/SKILL.md`): map the request as a design tree, and in each round ask the **frontier**, the decisions whose prerequisites are already settled. A question that depends on an answer still open belongs to a later round.
+   - **Format.** At most 5 questions per round; the rest of the frontier waits for the next round. Number them Q1, Q2, …, give lettered options and your recommended answer, in the user's language, so the user can reply "Q1 B, Q2 A" or "全部照建議". Keep every answer to a letter or a few words; never make an answer depend on writing a paragraph.
+
+     ```
+     ❓ **Q1** - **<title>**: <question> A) … B) … C) …
+     ➡️ <recommended letter + one-line reason>
+     ```
+   - **Facts are your job, decisions are the user's.** Before each round, read what the request points at (the manuscript, its reference list, vault notes, memory, project files) inline. Never ask the user for something you can look up; ask only what is theirs to decide.
+   - **The tree** (a branch opens once its parent is settled):
+
+     | Branch | Settles |
+     |---|---|
+     | Purpose | what the literature is for: a manuscript section, a proposal, a reviewer reply, a course, understanding a field |
+     | Scope | the question's boundaries: mechanisms, region, scale, period, and what is explicitly out |
+     | Deliverable | the stop gate; edit the user's document directly or write a separate report; length budget |
+     | Evidence rules for this run | existing references to keep or replace; full-text route (open access only, how many papers the user will download by hand); whether a `[Q3]` paper is acceptable |
+     | If the literature disagrees | adjust the text only, adjust the analysis too, or report and stop; what happens if a conclusion flips |
+     | Strategy and budget | search strategy, budget tier, subagent count (after RECON) |
+     | Strategy details | `sub-area`: framework and sub-areas; `facets`: the five facets worded for this project; `syllabus`: the section grouping (after RECON) |
+     | Optional phases | Zotero, `.docx`, NotebookLM (`manuscript` only) |
+
+   - **Done when the frontier is empty**: every branch answered by the user or explicitly handed back. "你決定" or "照你想法" accepts your recommended answers; list each one as an assumption in the blueprint. Nothing is silently assumed.
+3. **RECON:** run one broad search on the topic as stated (OpenAlex or Scopus) alongside the first grilling round; it needs only the topic. It teaches the vocabulary, themes, method families and high-citation papers that the strategy questions need. Select nothing yet.
+4. **Blueprint.** Assembled from the grilling answers: one plan, one approval, and the "shared understanding" check that ends the grilling. It states:
    - **Search strategy**, from `references/research-workflows.md`:
 
      | Strategy | Use when | Procedure |
@@ -33,7 +54,7 @@ This skill orchestrates a multi-stage pipeline for scientific research, combinin
    - **Source floor**: `quick` and `standard` use at least two sources, one of them AnySearch `academic.citation` on the seed DOIs; `exhaustive` uses all five.
    - **Subagent count**: default 0. Harvest with the background template (`templates/fetch_openalex_background.js`) and MCP calls in the main conversation. A count above 0 must be named here and approved.
    - **Optional phases** (`manuscript` only): Zotero (4.6), `.docx` with infographics (6), NotebookLM (7.2), each on or off.
-5. **Halt & Wait:** You MUST wait for the user's "Explicit Approval" of the blueprint. This is the run's only halt: once approved, run to the stop gate and deliver one review package.
+5. **Halt & Wait:** You MUST wait for the user's "Explicit Approval" of the blueprint. The grilling rounds and this approval all come before any work; after approval there is no further halt: run to the stop gate and deliver one review package.
 
 The method behind the three strategies is adapted from three workflows Consensus published (consensus.app/home/mcp, read 2026-10-19). Only the method was taken; **the Consensus MCP is not used** (the user declined it). The shared rules in §0 of that file apply in every strategy: provenance labels, sparse is not a gap, cross-search tracking, the search summary.
 
