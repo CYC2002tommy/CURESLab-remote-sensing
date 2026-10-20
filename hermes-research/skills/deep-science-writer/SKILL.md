@@ -27,7 +27,8 @@ Use them when they exist: `C:\Users\User\AppData\Local\agy-helpers\ask-agy.cmd` 
 | local model | after each ingest | writes the retrieval-check questions (`scripts/rag_check.py`, via `rag_ingest.py`) |
 
 Rules for every call:
-- **Command:** `C:\Users\User\AppData\Local\agy-helpers\ask-agy.cmd --agent <role> --task-file <F> [--batch <key>] [--schema evidence|findings|ingestqa|challenge] --timeout 10m`, run with the PowerShell tool exactly in this form. The task file is English and says "Do not access the network."
+- **Command:** `C:\Users\User\AppData\Local\agy-helpers\ask-agy.cmd --agent <role> --task-file <F> [--batch <key>] [--schema evidence|findings|ingestqa|challenge] [--timeout 25m]`, run with the PowerShell tool exactly in this form. The task file is English and says "Do not access the network."
+- **Time limit.** The wrapper's default is 10 minutes per call, and `--timeout` raises it to at most 30m. Raise it only for a call that will run longer, such as manuscript-auditor at the `manuscript` gate, where a full manuscript took about 15 minutes. Launch any call with `--timeout` above 9m with `run_in_background`, because the shell tool stops a foreground command at 10 minutes. A call cut off at its limit gets one short wrap-up turn; if that also fails it returns `PRINT_TIMEOUT`, which is not a result.
 - **Files by path, not copies.** Point agy at the vault notes and the run folder; `--packet` holds only the task and agy's own scratch output.
 - **agy proposes, Claude decides.** Grep every load-bearing number a helper reports out of the primary text before using it, and spot-check 20% of the rest. Never pass a helper's question on to the user.
 - **Unpublished text.** The user's own manuscripts may go to agy. Someone else's unpublished text (a friend's proposal, a paper under review) never does: do that step yourself and label the review "not independent". The same applies to a project the user has excluded from agy (memory says which).
