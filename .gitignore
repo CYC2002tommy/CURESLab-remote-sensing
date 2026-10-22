@@ -48,8 +48,19 @@ credentials.json
 # Copyrighted book distillations — personal study only, never published
 brock-microbiology/
 water-supply-course/
+wastewater-course/
+
+# 學長姊流傳的實驗預結報蒸餾而成，含他人姓名與實際作業內容。個人研讀用，絕不公開。
+water-quality-lab/
 
 # Private project records — these cite specific errors in the user's own
 # research (project names, constants, manuscript sessions). Local only.
 stale-derivative-audit/
 harness-evolution-audit/
+
+# Third-party skill (voidful/hung-yi-lee-skill, MIT), cloned 2026-10-22 with its own .git.
+# Local only: not ours to republish, and the cached YouTube transcripts are third-party content.
+hung-yi-lee/
+
+# Springer 2011 tropospheric-composition book (Burrows/Platt/Borrell eds.) distilled for study. Copyrighted; local only.
+weinai/
