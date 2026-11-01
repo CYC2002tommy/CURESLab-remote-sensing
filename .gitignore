@@ -64,3 +64,7 @@ hung-yi-lee/
 
 # Springer 2011 tropospheric-composition book (Burrows/Platt/Borrell eds.) distilled for study. Copyrighted; local only.
 weinai/
+
+# Third-party skill (vercel-labs/agent-desktop v1.0.2, Apache-2.0), copied 2026-11-01 from skills/agent-desktop.
+# Local only: the CLI itself comes from `npm install -g agent-desktop`; update both together.
+agent-desktop/
