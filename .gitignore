@@ -68,3 +68,7 @@ weinai/
 # Third-party skill (vercel-labs/agent-desktop v1.0.2, Apache-2.0), copied 2026-11-01 from skills/agent-desktop.
 # Local only: the CLI itself comes from `npm install -g agent-desktop`; update both together.
 agent-desktop/
+
+# Third-party skills (K-Dense-AI/scientific-agent-skills, MIT), installed 2026-11-02 by
+# ~/.claude/skill-sources/k-dense/install_k_dense.py (staging and backups live there). Local only.
+k-dense-science/
