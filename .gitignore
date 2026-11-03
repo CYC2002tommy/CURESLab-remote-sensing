@@ -77,6 +77,6 @@ k-dense-science/
 # personal nickname trigger. Local only.
 agentic-scientist/
 
-# The commander 「台中黑哥」 (2026-11-03): SKILL.md is public method; LOCAL.md holds personas, standing
-# dispatch rules, delegations and machine paths. Local only.
-commander/LOCAL.md
+# The commander 「台中黑哥」 lives in its own repo since 2026-11-03: github.com/CYC2002tommy/taichung-ninja.
+# The local copy here (SKILL.md + private LOCAL.md) is not tracked in this repo.
+commander/
