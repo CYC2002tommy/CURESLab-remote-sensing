@@ -72,3 +72,11 @@ agent-desktop/
 # Third-party skills (K-Dense-AI/scientific-agent-skills, MIT), installed 2026-11-02 by
 # ~/.claude/skill-sources/k-dense/install_k_dense.py (staging and backups live there). Local only.
 k-dense-science/
+
+# AI-Scientist-v3 runner skill (2026-11-03): this machine's WSL layout, token handling and the persona's
+# personal nickname trigger. Local only.
+agentic-scientist/
+
+# The commander 「台中黑哥」 (2026-11-03): SKILL.md is public method; LOCAL.md holds personas, standing
+# dispatch rules, delegations and machine paths. Local only.
+commander/LOCAL.md
